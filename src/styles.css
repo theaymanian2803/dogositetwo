@@ -1,0 +1,104 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Poppins:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Poppins", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-hero: var(--hero);
+  --color-promo: var(--promo);
+}
+
+:root {
+  --radius: 1rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.04 165);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.04 165);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.04 165);
+  --primary: oklch(0.31 0.075 162);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.965 0.006 165);
+  --secondary-foreground: oklch(0.33 0.06 162);
+  --muted: oklch(0.955 0.006 165);
+  --muted-foreground: oklch(0.47 0.03 160);
+  --accent: oklch(0.42 0.1 160);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0.01 85);
+  --border: oklch(0.905 0.012 165);
+  --input: oklch(0.905 0.012 165);
+  --ring: oklch(0.42 0.1 160);
+
+  --hero: oklch(0.955 0.02 160);
+  --promo: oklch(0.93 0.03 160);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  .btn-dark {
+    @apply inline-flex items-center justify-center rounded-full bg-primary px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-primary-foreground transition-all hover:-translate-y-0.5 hover:bg-primary/90;
+  }
+  .btn-accent {
+    @apply inline-flex items-center justify-center rounded-full bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 hover:bg-primary/90;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center rounded-full border border-border bg-card px-7 py-3 text-sm font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-secondary;
+  }
+  .card-lift {
+    @apply transition-all duration-300 hover:-translate-y-1.5 hover:shadow-md;
+  }
+  .squiggle {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 12' fill='none' stroke='%233c9a62' stroke-width='2.5'><path d='M0 6 Q 8 0 16 6 T 32 6 T 48 6 T 64 6 T 80 6 T 96 6'/></svg>");
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: 12px;
+    width: 120px;
+  }
+}
