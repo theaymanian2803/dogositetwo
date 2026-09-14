@@ -116,6 +116,9 @@ export async function ensureSectionColumns(): Promise<void> {
   if (!names.has("product_ids")) {
     await turso.execute("ALTER TABLE sections ADD COLUMN product_ids TEXT");
   }
+  if (!names.has("categories")) {
+    await turso.execute("ALTER TABLE sections ADD COLUMN categories TEXT");
+  }
 }
 
 export async function setupDatabase(): Promise<void> {
@@ -125,6 +128,11 @@ export async function setupDatabase(): Promise<void> {
   const cols = await turso.execute("PRAGMA table_info(products)");
   if (!(cols.rows as unknown as { name: string }[]).some((c) => c.name === "images")) {
     await turso.execute("ALTER TABLE products ADD COLUMN images TEXT");
+  }
+
+  const categoryCols = await turso.execute("PRAGMA table_info(categories)");
+  if (!(categoryCols.rows as unknown as { name: string }[]).some((c) => c.name === "image")) {
+    await turso.execute("ALTER TABLE categories ADD COLUMN image TEXT");
   }
 
   await ensureSectionColumns();

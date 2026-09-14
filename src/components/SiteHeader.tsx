@@ -14,8 +14,8 @@ import {
   Shirt,
   Bed,
   Puzzle,
-  Languages,
   Check,
+  X,
 } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useCart } from "@/hooks/useCart";
@@ -70,6 +70,7 @@ export function SiteHeader() {
   const [results, setResults] = useState<ProductSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const megaRef = useRef<HTMLDivElement>(null);
@@ -161,6 +162,7 @@ export function SiteHeader() {
     const q = search.trim();
     if (!q) return;
     setSearchOpen(false);
+    setSearchExpanded(false);
     setSheetOpen(false);
     navigate(`/shop?q=${encodeURIComponent(q)}`);
   }
@@ -169,6 +171,7 @@ export function SiteHeader() {
     setSearch("");
     setResults([]);
     setSearchOpen(false);
+    setSearchExpanded(false);
     setSheetOpen(false);
     navigate(`/product/${p.slug}`);
   }
@@ -396,42 +399,37 @@ export function SiteHeader() {
             </>
           )}
 
+          <button
+            type="button"
+            onClick={() => setSearchExpanded((p) => !p)}
+            data-tour="nav-search"
+            aria-label={t("nav.search")}
+            className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+          >
+            {searchExpanded ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </button>
+
           <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label={t("lang.label")}
                 title={active?.label}
-                className="group inline-flex h-9 shrink-0 items-center gap-2 border border-border bg-card px-2.5 text-sm font-medium text-foreground outline-none transition-colors hover:border-accent/60 hover:bg-secondary/60 data-[state=open]:border-accent data-[state=open]:bg-accent/5"
+                className="grid h-9 w-9 place-items-center rounded-full text-[11px] font-bold uppercase tracking-wider text-accent outline-none transition-colors hover:bg-secondary data-[state=open]:bg-secondary"
               >
-                <span className="grid h-5 w-8 shrink-0 place-items-center bg-accent/10 text-[10px] font-bold uppercase tracking-wider text-accent">
-                  {active?.code}
-                </span>
-                <span className="hidden whitespace-nowrap sm:inline">{active?.label}</span>
-                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                {active?.code}
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 rounded-none border-border p-1.5 shadow-xl shadow-black/10"
+                className="w-20 rounded-none border-border p-1.5 shadow-xl shadow-black/10"
               >
                 {LANGS.map((l) => (
                   <DropdownMenuItem
                     key={l.code}
                     onClick={() => setLang(l.code)}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-none px-2.5 py-2 text-sm focus:bg-accent/10 focus:text-foreground"
+                    className="flex cursor-pointer items-center justify-center gap-2 rounded-none px-2 py-2 text-xs font-bold uppercase tracking-wider focus:bg-accent/10 focus:text-foreground"
                   >
-                    <span
-                      className={`grid h-5 w-8 shrink-0 place-items-center text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                        lang === l.code
-                          ? "bg-primary text-white"
-                          : "bg-secondary text-muted-foreground"
-                      }`}
-                    >
-                      {l.code}
-                    </span>
-                    <span className={lang === l.code ? "font-semibold text-accent" : ""}>
-                      {l.label}
-                    </span>
-                    {lang === l.code && <Check className="ml-auto h-4 w-4 text-accent" />}
+                    {l.code}
+                    {lang === l.code && <Check className="h-3.5 w-3.5 text-accent" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -477,38 +475,37 @@ export function SiteHeader() {
           </div>
         </div>
 
-        <div className="border-t border-border bg-background/60 px-4 py-3 sm:px-6">
-          <div
-            ref={desktopSearchRef}
-            data-tour="nav-search"
-            className="relative mx-auto w-full max-w-2xl"
-          >
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder={t("nav.search")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-11 w-full rounded-full border border-border bg-secondary/60 pl-11 pr-24 text-sm outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/25"
+        {searchExpanded && (
+          <div className="border-t border-border bg-background/60 px-4 py-3 sm:px-6">
+            <div ref={desktopSearchRef} className="relative mx-auto w-full max-w-2xl">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="search"
+                  placeholder={t("nav.search")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  autoFocus
+                  className="h-11 w-full rounded-full border border-border bg-secondary/60 pl-11 pr-24 text-sm outline-none transition-all focus:border-accent focus:ring-2 focus:ring-accent/25"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground transition-all hover:opacity-90"
+                >
+                  {t("shop.search")}
+                </button>
+              </form>
+              <SearchResults
+                query={search}
+                open={searchOpen}
+                loading={searchLoading}
+                results={results}
+                onSelect={selectResult}
+                onViewAll={goToResults}
               />
-              <button
-                type="submit"
-                className="absolute right-1.5 top-1/2 inline-flex h-8 -translate-y-1/2 items-center rounded-full bg-primary px-4 text-xs font-semibold text-white transition-all hover:opacity-90"
-              >
-                {t("shop.search")}
-              </button>
-            </form>
-            <SearchResults
-              query={search}
-              open={searchOpen}
-              loading={searchLoading}
-              results={results}
-              onSelect={selectResult}
-              onViewAll={goToResults}
-            />
+            </div>
           </div>
-        </div>
+        )}
       </header>
     </>
   );

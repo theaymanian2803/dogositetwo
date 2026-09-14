@@ -69,8 +69,8 @@ export function ControlsManager() {
       await ensureSectionColumns();
       await turso.execute({
         sql: isNew
-          ? "INSERT INTO sections (id, type, name, size, align, image_url, title, subtitle, button_text, button_link, grid_items, columns, product_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-          : "UPDATE sections SET type=?, name=?, size=?, align=?, image_url=?, title=?, subtitle=?, button_text=?, button_link=?, grid_items=?, columns=?, product_ids=? WHERE id=?",
+          ? "INSERT INTO sections (id, type, name, size, align, image_url, title, subtitle, button_text, button_link, grid_items, columns, product_ids, categories) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          : "UPDATE sections SET type=?, name=?, size=?, align=?, image_url=?, title=?, subtitle=?, button_text=?, button_link=?, grid_items=?, columns=?, product_ids=?, categories=? WHERE id=?",
         args: isNew
           ? [
               section.id,
@@ -86,6 +86,7 @@ export function ControlsManager() {
               JSON.stringify(section.grid_items),
               section.columns,
               JSON.stringify(section.product_ids),
+              JSON.stringify(section.categories),
             ]
           : [
               section.type,
@@ -100,6 +101,7 @@ export function ControlsManager() {
               JSON.stringify(section.grid_items),
               section.columns,
               JSON.stringify(section.product_ids),
+              JSON.stringify(section.categories),
               section.id,
             ],
       });
@@ -185,7 +187,9 @@ export function ControlsManager() {
                     {row.section.type === "grid"
                       ? "Grid"
                       : row.section.type === "products"
-                        ? `Featured products · ${row.section.columns} cols`
+                        ? row.section.categories.length > 0
+                          ? `Categories: ${row.section.categories.join(", ")} · ${row.section.columns} cols`
+                          : `Featured products · ${row.section.columns} cols`
                         : `Banner · ${row.section.size[0].toUpperCase()}${row.section.size.slice(1)}`}
                   </p>
                 )}
@@ -270,11 +274,20 @@ function SectionEditorModal({
   );
   const [columns, setColumns] = useState<2 | 3>(initial?.columns ?? 3);
   const [productIds, setProductIds] = useState<string[]>(initial?.product_ids ?? []);
+  const [categorySlugs, setCategorySlugs] = useState<string[]>(initial?.categories ?? []);
+  const [allCategories, setAllCategories] = useState<{ slug: string; name: string }[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<ProductPick[]>([]);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<ProductPick[]>([]);
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    turso
+      .execute("SELECT name, slug FROM categories ORDER BY name")
+      .then(({ rows }) => setAllCategories(rows as unknown as { slug: string; name: string }[]))
+      .catch(() => setAllCategories([]));
+  }, []);
 
   useEffect(() => {
     if (initial && initial.product_ids.length > 0) {
@@ -378,6 +391,7 @@ function SectionEditorModal({
       })),
       columns,
       product_ids: productIds,
+      categories: categorySlugs,
     });
   }
 
@@ -537,111 +551,167 @@ function SectionEditorModal({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Products</label>
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search products to feature…"
-                    className={`${inputClass} pl-10`}
-                  />
-                  {search.trim() && (
-                    <div className="absolute left-0 right-0 top-full z-10 mt-1.5 overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-                      {searching ? (
-                        <p className="px-4 py-3 text-sm text-muted-foreground">Searching…</p>
-                      ) : results.length === 0 ? (
-                        <p className="px-4 py-3 text-sm text-muted-foreground">No products found</p>
-                      ) : (
-                        results.map((p) => {
-                          const already = productIds.includes(p.id);
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              disabled={already}
-                              onClick={() => addProduct(p)}
-                              className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-secondary disabled:opacity-40"
-                            >
-                              <img
-                                src={p.image_url}
-                                alt=""
-                                className="h-10 w-10 rounded-lg border border-border bg-background object-contain p-1"
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-sm font-medium">{p.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatPrice(p.price)}
-                                </span>
-                              </span>
-                              {already ? (
-                                <span className="text-[11px] font-medium text-muted-foreground">
-                                  Added
-                                </span>
-                              ) : (
-                                <Plus className="h-4 w-4 shrink-0 text-accent" />
-                              )}
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
-                </div>
+                <label className="text-xs font-medium text-foreground">Categories (optional)</label>
+                {allCategories.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No categories yet — add some in the Categories tab first.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {allCategories.map((c) => {
+                      const active = categorySlugs.includes(c.slug);
+                      return (
+                        <button
+                          key={c.slug}
+                          type="button"
+                          onClick={() =>
+                            setCategorySlugs((s) =>
+                              active ? s.filter((x) => x !== c.slug) : [...s, c.slug],
+                            )
+                          }
+                          className={`h-9 rounded-full border px-4 text-xs font-semibold transition-all ${
+                            active
+                              ? "border-accent bg-accent text-accent-foreground"
+                              : "border-border bg-background text-muted-foreground hover:border-accent/40 hover:text-foreground"
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {categorySlugs.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Showing products from {categorySlugs.length} selected{" "}
+                      {categorySlugs.length === 1 ? "category" : "categories"}.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCategorySlugs([])}
+                      className="text-xs font-medium text-accent hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {selectedProducts.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Selected ({selectedProducts.length}) — order = display order
-                  </p>
-                  {selectedProducts.map((p, i) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 p-2.5"
-                    >
-                      <img
-                        src={p.image_url}
-                        alt=""
-                        className="h-11 w-11 shrink-0 rounded-lg border border-border bg-background object-contain p-1"
+              {categorySlugs.length === 0 && (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Products</label>
+                    <div className="relative">
+                      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search products to feature…"
+                        className={`${inputClass} pl-10`}
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{p.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatPrice(p.price)}
-                        </span>
-                      </span>
-                      <div className="flex shrink-0 items-center gap-0.5">
-                        <button
-                          type="button"
-                          disabled={i === 0}
-                          onClick={() => moveProduct(p.id, -1)}
-                          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary disabled:opacity-30"
-                          aria-label="Move up"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={i === selectedProducts.length - 1}
-                          onClick={() => moveProduct(p.id, 1)}
-                          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary disabled:opacity-30"
-                          aria-label="Move down"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeProduct(p.id)}
-                          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-500"
-                          aria-label={`Remove ${p.name}`}
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      {search.trim() && (
+                        <div className="absolute left-0 right-0 top-full z-10 mt-1.5 overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
+                          {searching ? (
+                            <p className="px-4 py-3 text-sm text-muted-foreground">Searching…</p>
+                          ) : results.length === 0 ? (
+                            <p className="px-4 py-3 text-sm text-muted-foreground">
+                              No products found
+                            </p>
+                          ) : (
+                            results.map((p) => {
+                              const already = productIds.includes(p.id);
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  disabled={already}
+                                  onClick={() => addProduct(p)}
+                                  className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-secondary disabled:opacity-40"
+                                >
+                                  <img
+                                    src={p.image_url}
+                                    alt=""
+                                    className="h-10 w-10 rounded-lg border border-border bg-background object-contain p-1"
+                                  />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-medium">
+                                      {p.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatPrice(p.price)}
+                                    </span>
+                                  </span>
+                                  {already ? (
+                                    <span className="text-[11px] font-medium text-muted-foreground">
+                                      Added
+                                    </span>
+                                  ) : (
+                                    <Plus className="h-4 w-4 shrink-0 text-accent" />
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+
+                  {selectedProducts.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Selected ({selectedProducts.length}) — order = display order
+                      </p>
+                      {selectedProducts.map((p, i) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 p-2.5"
+                        >
+                          <img
+                            src={p.image_url}
+                            alt=""
+                            className="h-11 w-11 shrink-0 rounded-lg border border-border bg-background object-contain p-1"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{p.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatPrice(p.price)}
+                            </span>
+                          </span>
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button
+                              type="button"
+                              disabled={i === 0}
+                              onClick={() => moveProduct(p.id, -1)}
+                              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                              aria-label="Move up"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={i === selectedProducts.length - 1}
+                              onClick={() => moveProduct(p.id, 1)}
+                              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                              aria-label="Move down"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeProduct(p.id)}
+                              className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-500"
+                              aria-label={`Remove ${p.name}`}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (

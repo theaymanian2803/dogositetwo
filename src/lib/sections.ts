@@ -19,6 +19,7 @@ export type Section = {
   grid_items: GridItem[];
   columns: SectionColumns;
   product_ids: string[];
+  categories: string[];
 };
 
 export type SectionEntry = { id: string; visible: boolean };
@@ -65,6 +66,16 @@ export function parseGridItems(raw: string | null): GridItem[] {
 }
 
 export function parseProductIds(raw: string | null): string[] {
+  try {
+    const arr = JSON.parse(raw ?? "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr.map((x: unknown) => String(x)).filter((x) => x.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+export function parseCategories(raw: string | null): string[] {
   try {
     const arr = JSON.parse(raw ?? "[]");
     if (!Array.isArray(arr)) return [];
@@ -126,6 +137,7 @@ export function sectionFromRow(row: Record<string, unknown>): Section {
     grid_items: parseGridItems(String(row.grid_items ?? "[]")),
     columns: parseColumns(row.columns),
     product_ids: parseProductIds(String(row.product_ids ?? "[]")),
+    categories: parseCategories(String(row.categories ?? "[]")),
   };
 }
 

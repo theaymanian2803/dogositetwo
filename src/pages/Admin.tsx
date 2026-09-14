@@ -57,7 +57,7 @@ type Product = {
   tag: string | null;
 };
 
-type Category = { id: string; name: string; slug: string };
+type Category = { id: string; name: string; slug: string; image: string | null };
 
 type OrderItem = { id: string; name: string; qty: number; price: number; image_url: string };
 type Order = {
@@ -262,6 +262,7 @@ export default function Admin() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newCategory, setNewCategory] = useState("");
+  const [newCategoryImage, setNewCategoryImage] = useState("");
   const [orders, setOrders] = useState<Order[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -269,6 +270,7 @@ export default function Admin() {
   const [page, setPage] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const extraFileRef = useRef<HTMLInputElement>(null);
+  const catFileRef = useRef<HTMLInputElement>(null);
   const extraSlotRef = useRef<number>(0);
   const [confirm, setConfirm] = useState<ConfirmAction>(null);
   const [reviewForm, setReviewForm] = useState(emptyReviewForm);
@@ -315,6 +317,10 @@ export default function Admin() {
     const cols = await turso.execute("PRAGMA table_info(products)");
     if (!(cols.rows as unknown as { name: string }[]).some((c) => c.name === "images")) {
       await turso.execute("ALTER TABLE products ADD COLUMN images TEXT");
+    }
+    const catCols = await turso.execute("PRAGMA table_info(categories)");
+    if (!(catCols.rows as unknown as { name: string }[]).some((c) => c.name === "image")) {
+      await turso.execute("ALTER TABLE categories ADD COLUMN image TEXT");
     }
     await ensureSectionColumns();
     const tables = await turso.execute(
@@ -401,6 +407,21 @@ export default function Admin() {
       setForm({ ...form, image_url: reader.result as string });
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleCategoryUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image must be under 2MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNewCategoryImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   }
 
   function handleExtraUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -577,12 +598,14 @@ export default function Admin() {
     const name = newCategory.trim();
     if (!name) return;
     try {
+      await ensureSchema();
       await turso.execute({
-        sql: "INSERT INTO categories (id, name, slug) VALUES (?, ?, ?)",
-        args: [crypto.randomUUID(), name, slugify(name)],
+        sql: "INSERT INTO categories (id, name, slug, image) VALUES (?, ?, ?, ?)",
+        args: [crypto.randomUUID(), name, slugify(name), newCategoryImage.trim() || null],
       });
       toast.success("Category added");
       setNewCategory("");
+      setNewCategoryImage("");
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error adding category");
@@ -1458,16 +1481,61 @@ export default function Admin() {
             {/* ───── CATEGORIES TAB ───── */}
             {tab === "categories" && (
               <div className="max-w-lg">
-                <form onSubmit={addCategory} className="flex gap-2 mb-4">
-                  <input
-                    placeholder="New category name"
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className={inputClass}
-                  />
-                  <button className="inline-flex items-center gap-1.5 h-10 shrink-0 rounded-full bg-primary px-5 text-sm font-semibold text-accent-foreground transition-transform hover:scale-105">
-                    <Plus className="h-4 w-4" /> Add
-                  </button>
+                <form onSubmit={addCategory} className="mb-4 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="New category name"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      className={inputClass}
+                    />
+                    <button className="inline-flex items-center gap-1.5 h-10 shrink-0 rounded-full bg-primary px-5 text-sm font-semibold text-accent-foreground transition-transform hover:scale-105">
+                      <Plus className="h-4 w-4" /> Add
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => catFileRef.current?.click()}
+                      className="group relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-dashed border-border bg-secondary/50 transition-colors hover:border-accent/40"
+                      aria-label="Upload category image"
+                    >
+                      {newCategoryImage ? (
+                        <img
+                          src={newCategoryImage}
+                          alt="Category preview"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Upload className="h-5 w-5 text-muted-foreground/70" />
+                      )}
+                    </button>
+                    <input
+                      ref={catFileRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCategoryUpload}
+                      className="hidden"
+                    />
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="url"
+                        placeholder="Category image URL (optional)"
+                        value={newCategoryImage}
+                        onChange={(e) => setNewCategoryImage(e.target.value)}
+                        className={inputClass}
+                      />
+                      {newCategoryImage && (
+                        <button
+                          type="button"
+                          onClick={() => setNewCategoryImage("")}
+                          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                        >
+                          Remove image
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </form>
                 <div className="space-y-2.5">
                   {categories.length === 0 && (
@@ -1489,8 +1557,16 @@ export default function Admin() {
                       className="flex items-center justify-between bg-card rounded-2xl border border-border px-4 py-3.5 transition-shadow hover:shadow-sm"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent text-sm font-bold uppercase">
-                          {c.name[0]}
+                        <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl bg-accent/10 text-accent text-sm font-bold uppercase">
+                          {c.image ? (
+                            <img
+                              src={c.image}
+                              alt={c.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            c.name[0]
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-foreground">{c.name}</p>
