@@ -148,6 +148,21 @@ email and password.
 > ⚠️ `.env` holds secrets. Never commit it, share it, or upload it. On Vercel you enter
 > the same values in the dashboard instead (Section 6). `.env` is already in `.gitignore`.
 
+### 4.4 Activate your license
+
+The admin dashboard is unlocked with the product key you received when you bought this
+template. The key is bound to the domain you deploy on, so activate it **after** your site
+is live on its final domain (activating on `localhost` binds it to `localhost`).
+
+1. Open your site's `/admin` (or `/auth`). You'll see an **Activate** screen.
+2. Paste your product key (looks like `DOGOSITE-XXXX-XXXX-XXXX`) and click **Activate**.
+3. The dashboard unlocks. The key allows a limited number of domains (usually 3); re-entering
+   the same key on the same domain is always free.
+
+If you move to a new domain later and the key reports a **domain limit**, contact your
+seller to release the old binding. To re-enter a different key, open
+**Admin → Settings → License → Change key**.
+
 ---
 
 ## 5. Deploy on Vercel (recommended — easiest option)

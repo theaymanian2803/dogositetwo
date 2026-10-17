@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useLicense } from "@/hooks/useLicense";
+import { ActivateScreen } from "@/components/admin/ActivateScreen";
 import { toast } from "sonner";
 
 export default function Auth() {
@@ -10,6 +12,12 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const {
+    status: license,
+    isLoading: licenseLoading,
+    isError: licenseError,
+    refetch: refetchLicense,
+  } = useLicense();
 
   useEffect(() => {
     document.title = "Sign in — PetPals";
@@ -34,6 +42,36 @@ export default function Auth() {
       setLoading(false);
     }
   }
+
+  if (licenseLoading)
+    return (
+      <div className="min-h-screen grid place-items-center bg-background text-muted-foreground">
+        Checking license…
+      </div>
+    );
+
+  if (licenseError)
+    return (
+      <div className="min-h-screen grid place-items-center px-4 bg-background">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Couldn't verify your license
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We couldn't reach your database to check the license. Check your connection and try
+            again.
+          </p>
+          <button
+            onClick={() => refetchLicense()}
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-transform hover:scale-105"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+
+  if (!license?.licensed) return <ActivateScreen brand="PetPals" />;
 
   return (
     <div className="min-h-screen grid place-items-center bg-background px-4">

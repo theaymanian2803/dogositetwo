@@ -1,5 +1,8 @@
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { useLicense } from "@/hooks/useLicense";
+import { ActivateScreen } from "@/components/admin/ActivateScreen";
+import { clearGrant } from "@/lib/licenseStore";
 import { useSettings, type Settings as StoreSettings } from "@/hooks/useSettings";
 import { sampleCategories, sampleProducts } from "@/lib/sampleData";
 import { turso, resetTursoClient } from "@/integrations/turso/client";
@@ -284,6 +287,12 @@ export default function Admin() {
   const [changingCreds, setChangingCreds] = useState(false);
   const [dataBusy, setDataBusy] = useState(false);
   const [guardPassword, setGuardPassword] = useState("");
+  const {
+    status: license,
+    isLoading: licenseLoading,
+    isError: licenseError,
+    refetch: refetchLicense,
+  } = useLicense();
 
   useEffect(() => {
     setGuardPassword("");
@@ -443,6 +452,36 @@ export default function Admin() {
     reader.readAsDataURL(file);
     e.target.value = "";
   }
+
+  if (licenseLoading)
+    return (
+      <div className="min-h-screen grid place-items-center bg-secondary/50 text-muted-foreground">
+        Checking license…
+      </div>
+    );
+
+  if (licenseError)
+    return (
+      <div className="min-h-screen grid place-items-center px-4 bg-secondary/50">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Couldn't verify your license
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We couldn't reach your database to check the license. Check your connection and try
+            again.
+          </p>
+          <button
+            onClick={() => refetchLicense()}
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground transition-transform hover:scale-105"
+          >
+            <RotateCcw className="h-4 w-4" /> Retry
+          </button>
+        </div>
+      </div>
+    );
+
+  if (!license?.licensed) return <ActivateScreen brand="PetPals" />;
 
   if (loading)
     return (
@@ -1832,6 +1871,33 @@ export default function Admin() {
                         Reset to demo
                       </button>
                     )}
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                    License
+                  </h3>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    This store is activated with a product key bound to your domain.
+                  </p>
+                  <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-muted/50 px-3 py-2 font-mono text-xs text-muted-foreground">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                    {license?.mode === "disabled"
+                      ? "Licensing disabled"
+                      : `Licensed — ${license?.domain ?? ""} (${license?.mode ?? "forever"})`}
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={async () => {
+                        await clearGrant(window.location.host);
+                        toast.success("License cleared. Reloading…");
+                        setTimeout(() => window.location.reload(), 700);
+                      }}
+                      className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-background px-5 text-sm font-semibold text-foreground transition-all hover:bg-secondary active:scale-[0.98]"
+                    >
+                      <KeyRound className="h-4 w-4" /> Change key
+                    </button>
                   </div>
                 </section>
 
