@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { markOnboardingDone } from "@/lib/onboarding";
 import { useAuth } from "@/hooks/useAuth";
+import { useLicense } from "@/hooks/useLicense";
+import { LicenseKeyForm } from "@/components/admin/LicenseKeyForm";
 import { Button } from "@/components/ui/button";
 
 interface Step {
@@ -27,6 +29,7 @@ interface Step {
 
 const DEMO_EMAIL = "admin@gmail.com";
 const DEMO_PASSWORD = "admin123";
+const BRAND = "PetPals";
 
 const STEPS: Step[] = [
   {
@@ -76,10 +79,10 @@ const STEPS: Step[] = [
       "Once your own database is connected you can change the admin email and password here. On the demo database these are shared, so they stay read-only.",
   },
   {
-    icon: <CheckCircle2 className="h-5 w-5" />,
-    title: "You're ready",
+    icon: <KeyRound className="h-5 w-5" />,
+    title: "Activate your store",
     description:
-      "Your store is set up. Everything else — branding, products and categories — is customized right from this admin panel. Happy selling!",
+      "Paste the product key from your purchase receipt to unlock the admin on this domain. You can also skip and activate later.",
   },
 ];
 
@@ -105,11 +108,13 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
   const location = useLocation();
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  const { status: license, isLoading: licenseLoading } = useLicense({ enabled: open });
   const signingIn = useRef(false);
   const scrollDoneFor = useRef<string | null>(null);
 
+  const ACTIVATION_STEP = STEPS.length - 1;
+  const licensed = !!license?.licensed;
   const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
   const waiting = !!current.selector && rect === null;
 
   useEffect(() => {
@@ -218,6 +223,91 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
     onOpenChange(false);
   };
 
+  if (step === ACTIVATION_STEP) {
+    return (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 px-4"
+        role="dialog"
+        aria-label="Activate your store"
+      >
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent">
+              {current.icon}
+            </div>
+            <span className="font-mono text-xs text-muted-foreground">
+              {step + 1} / {STEPS.length}
+            </span>
+            <div className="flex items-center gap-1">
+              {STEPS.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === step ? "w-5 bg-accent" : "w-1.5 bg-border"
+                  }`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={handleClose}
+              aria-label="Skip tour"
+              className="ml-auto rounded-md p-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {licensed ? (
+            <div className="mt-5 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/10 text-accent">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <h3 className="mt-3 text-lg font-semibold">You're ready</h3>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Your store is activated. Manage everything — branding, products and orders — from
+                the admin panel.
+              </p>
+              <Button className="mt-4 w-full text-sm font-semibold" onClick={handleClose}>
+                Finish
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="mt-5 space-y-1.5">
+                <h3 className="text-lg font-semibold leading-snug">{current.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {current.description}
+                </p>
+              </div>
+              <div className="mt-4">
+                {licenseLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    Checking license…
+                  </div>
+                ) : (
+                  <LicenseKeyForm brand={BRAND} onActivated={() => undefined} />
+                )}
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStep((s) => Math.max(0, s - 1))}
+                >
+                  Back
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleClose}>
+                  Skip for now
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const placeBelow =
     rect !== null && rect.top + rect.height + TOOLTIP_HEIGHT + 24 <= window.innerHeight;
   const tooltipLeft = rect
@@ -308,7 +398,7 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
                 <span
                   key={i}
                   className={`h-1.5 rounded-full transition-all ${
-                    i === step ? "w-5 bg-primary" : "w-1.5 bg-border"
+                    i === step ? "w-5 bg-accent" : "w-1.5 bg-border"
                   }`}
                 />
               ))}
@@ -336,19 +426,13 @@ export function OnboardingDialog({ open, onOpenChange }: OnboardingDialogProps) 
             >
               Back
             </Button>
-            {isLast ? (
-              <Button size="sm" onClick={handleClose} className="text-sm font-semibold">
-                Finish
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-                className="text-sm font-semibold"
-              >
-                Next
-              </Button>
-            )}
+            <Button
+              size="sm"
+              onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+              className="text-sm font-semibold"
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>

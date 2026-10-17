@@ -41,7 +41,7 @@ async function fetchStatus(): Promise<LicenseStatus> {
   return { licensed: true, domain: h, mode: v.payload.mode };
 }
 
-export const useLicense = () => {
+export const useLicense = (options: { enabled?: boolean } = {}) => {
   const qc = useQueryClient();
 
   const status = useQuery<LicenseStatus>({
@@ -49,6 +49,7 @@ export const useLicense = () => {
     queryFn: fetchStatus,
     retry: false,
     staleTime: 30_000,
+    enabled: options.enabled ?? true,
   });
 
   const mutation = useMutation({

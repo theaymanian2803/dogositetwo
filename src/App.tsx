@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { CartProvider } from "@/hooks/useCart";
 import { SettingsProvider } from "@/hooks/useSettings";
+import { TourProvider } from "@/hooks/useTour";
 import { SettingsDialogProvider } from "@/components/SettingsDialogProvider";
 import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { FloatingContact } from "@/components/FloatingContact";
@@ -43,26 +44,28 @@ export default function App() {
           <CartProvider>
             <SettingsProvider>
               <SettingsDialogProvider>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/track" element={<Track />} />
-                  <Route path="/order-confirmed" element={<OrderConfirmed />} />
-                  <Route path="/product/:slug" element={<Product />} />
-                  <Route path="/category/:category" element={<Category />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/account" element={<Account />} />
-                  <Route path="/:page" element={<InfoPage />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-                <OnboardingDialog open={onboardingOpen} onOpenChange={setOnboardingOpen} />
-                <FloatingContact />
+                <TourProvider tourActive={onboardingOpen}>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/track" element={<Track />} />
+                    <Route path="/order-confirmed" element={<OrderConfirmed />} />
+                    <Route path="/product/:slug" element={<Product />} />
+                    <Route path="/category/:category" element={<Category />} />
+                    <Route path="/shop" element={<Shop />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/account" element={<Account />} />
+                    <Route path="/:page" element={<InfoPage />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <Toaster />
+                  <OnboardingDialog open={onboardingOpen} onOpenChange={setOnboardingOpen} />
+                  <FloatingContact />
+                </TourProvider>
               </SettingsDialogProvider>
             </SettingsProvider>
           </CartProvider>
